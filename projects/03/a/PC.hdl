@@ -19,4 +19,12 @@ CHIP PC {
 
     PARTS:
     //// Replace this comment with your code.
+    Or(a=inc, b = reset, out = x);
+    Or(a=x, b=load, out=loadRegister);
+
+    Mux16(a=incIn, b = incOut, sel=inc, out=wireA);
+    Mux16(a=wireA, b = in, sel=load, out=wireB);
+    Mux16(a=wireB, b[0..15] = false, sel=reset, out=wireC);
+    Register(in = wireC, load = loadRegister, out = incIn, out = out);
+    Inc16(in = incIn, out = incOut);
 }
