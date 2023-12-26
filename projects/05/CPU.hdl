@@ -32,5 +32,42 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    //// Replace this comment with your code.
+
+    // Instruction A = 0XXX XXXX XXXX XXXX
+    // Instruction C = 1XXA CCCC CCDD DJJJ
+    //                 o  M        A   <
+    //                 p            D   =
+    //                                M  >
+
+    Mux16(a=instruction, b=outAlu, sel=instruction[15], out=outMuxA);
+    
+    // REGISTER A
+    Not(in=instruction[15], out=isAinstruction);
+    Or(a=isAinstruction,b=instruction[5], out=loadRegA); // op-code || destination-bit A
+    ARegister(in=outMuxA, load=loadRegA, out=outRegA); 
+
+    // Mux Register A or M
+    //     selects A or M register based on 'a' bit in the A-Instruction
+    Mux16(a=outRegA, b=inM, sel=instruction[12], out=outMuxAorM); 
+
+    And(a=instruction[4],b=instruction[15], out=loadRegisterD);
+    DRegister(in=outAlu, load=loadRegisterD, out=outRegD);
+    ALU(x=outRegD, y=outMuxAorM, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=outAluZero, ng=outAluNeg, out=outAlu);
+    Or16(a=outAlu, b=false, out=outM);
+    Or16(a=outRegA, b=false, out[0..14]=addressM);
+    And(a=instruction[3], b=instruction[15], out=writeM);
+    
+    
+
+    // Program Counter
+    Or(a=outAluNeg,b=outAluZero,out=negOrZero);
+    Not(in=negOrZero, out = outAluPositive);
+    And(a=instruction[0], b=outAluPositive, out=jmpPos);
+    And(a=instruction[1], b=outAluZero, out=jmpZero);
+    And(a=instruction[2], b=outAluNeg, out=jmpNeg);
+    Or(a=jmpPos,b=jmpZero,out=pinTemp);
+    Or(a=pinTemp,b=jmpNeg,out=pinSaysJmp);
+    And(a=pinSaysJmp,b=instruction[15],out=doJmp);
+    Not(in=doJmp, out=doIncrement);
+    PC(in=outRegA, inc=doIncrement, load=doJmp, reset=reset, out[0..14] = pc);
 }
